@@ -55,10 +55,7 @@ def sign_up():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        if username and password:
-            subscribers[username] = password
-            return redirect(url_for("welcome", username=username))
-        elif username in subscribers:
+        if username in subscribers:
             return '''
                 <body style="background-color: #ffebee;">
                   <div style="text-align:center; margin-top: 10vh;">
@@ -67,7 +64,9 @@ def sign_up():
                   </div>
                 </body>
             ''', 400
-        
+        elif username and password:
+            subscribers[username] = password
+            return redirect(url_for("welcome", username=username))
         else:
             return '''
                 <body style="background-color: #fff3e0;">
@@ -103,12 +102,12 @@ def welcome(username):
             confirm_password = request.form['confirm_password']
 
             if subscribers.get(username) != current_password:
-                message = "❌ Error: Current password is incorrect."
+                message = "❌ Error: Current password is incorrect.",
             elif new_password != confirm_password:
-                message = "❌ Error: Passwords do not match."
+                message = "❌ Error: Passwords do not match.",
             else:
                 subscribers[username] = new_password
-                message = "✅ Password updated successfully!"
+                message = "✅ Password updated successfully!", 
 
         # Handle unsubscribe confirmation
         elif 'confirm_unsubscribe' in request.form:
