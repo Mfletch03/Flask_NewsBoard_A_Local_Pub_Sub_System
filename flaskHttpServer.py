@@ -4,15 +4,32 @@ from flask import Flask, request, jsonify
 # Define the Flask app
 app = Flask(__name__)
 
+admins = {"admin" : "password"} 
 subscribers = {}
 
-def home():
-  return "Hello from Flask!"
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', "POST"])
 def root():
-  print(f"Hello at the root")
-  return jsonify({'main endpoint':'Ack'})
+    if request.methods == "POST":
+        username = request.form.get("Enter Username:", "")
+        password = request.form.get("Enter Password:", "")
+        subscribers[username] = password
+        if username in subscribers and password == subscribers[username]:
+            return redirect(url_for("welcome", username= username))
+     return f'''
+     <body style="background-color: #e0f7fa;">
+         <div style="text-align:center; margin-top: 10vh;">
+             <h2>Error: Please enter some text to echo.</h2>
+             <a href="{redirect(url_for("sign_up"))}">Sign up</a>
+         </div>
+     </body>
+ ''', 400
+
+
+@app.route("/sign_up", methods["GET", "POST"])
+def sign_up():
+    
+    return 
 
 @app.route('/list-subscribers', methods=['GET'])
 def listSubscribers():
