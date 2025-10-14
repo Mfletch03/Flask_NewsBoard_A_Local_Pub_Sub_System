@@ -338,6 +338,8 @@ def post_message(username):
     if request.method == 'POST':
         global admin_message
         admin_message = request.form['message']
+        for user in subscribers:
+            print(f"Notification sent to {user}")
         message = f"✅ Message posted! All users notified ({len(subscribers)} total)."
 
     return f"""
