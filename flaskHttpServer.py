@@ -224,12 +224,12 @@ def admin_dashboard(username):
       <h2>Welcome Admin {username}!</h2>
       
       <div style="margin-top:30px;">
-        <a href="/admin/subscribers">
+        <a href="/admin/{username}/subscribers">
           <button style="padding:10px 20px; background-color:#4CAF50; color:white; border:none; border-radius:8px; margin:10px;">
             View Subscribers
           </button>
         </a>
-        <a href="/admin/post_message">
+        <a href="/admin/{username}/post_message">
           <button style="padding:10px 20px; background-color:#2196F3; color:white; border:none; border-radius:8px; margin:10px;">
             Post Message
           </button>
@@ -277,8 +277,6 @@ def admin_dashboard(username):
         </body>
     """
 
-
-
 @app.route('/admin/<username>/subscribers')
 def view_subscribers(username):
     users_list = "<ul style='list-style:none; padding:0;'>"
@@ -309,7 +307,6 @@ def view_subscribers(username):
     </body>
     """
 
-# ---------- REMOVE A USER ----------
 @app.route('/admin/<admin_username>/remove_user/<username>')
 def remove_user(admin_username,username):
     if username in subscribers:
@@ -329,8 +326,6 @@ def remove_user(admin_username,username):
     </body>
     """
 
-
-# ---------- POST MESSAGE ----------
 @app.route('/admin/<username>/post_message', methods=['GET', 'POST'])
 def post_message(username):
     message = ""
