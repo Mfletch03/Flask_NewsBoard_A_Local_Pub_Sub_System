@@ -1,23 +1,26 @@
 from flask import Flask, request, redirect, url_for
+from bcrypt import hashpw, gensalt, checkpw
 
-
-# Define the Flask app
 app = Flask(__name__)
 
-admins = {"admin" : "password"} 
-subscribers = {"test" : "123"}
+# Create salted, hashed initial users
+admins = {"admin": hashpw("password".encode("utf-8"), gensalt())}
+subscribers = {"test": hashpw("123".encode("utf-8"), gensalt())}
+
 admin_message = None
+
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == "POST":
         username = request.form.get("username", "")
-        password = request.form.get("password", "")
-        if username in subscribers and password == subscribers[username]:
+        password = request.form.get("password", "").encode("utf-8")
+
+        if username in subscribers and checkpw(password, subscribers[username]):
             return redirect(url_for("welcome", username=username))
-        elif username in admins and password == admins[username]:
+        elif username in admins and checkpw(password, admins[username]):
             return redirect(url_for("admin_dashboard", username=username))
-        elif  username in subscribers and password != subscribers[username] or username in admins and password != admins[username]:
+        elif username in subscribers or username in admins:
             return '''
                 <body style="background-color: #ffebee;">
                   <div style="text-align:center; margin-top: 10vh;">
@@ -26,7 +29,6 @@ def login():
                   </div>
                 </body>
             ''', 400
-
         else:
             return '''
                 <body style="background-color: #e0f7fa;">
@@ -36,6 +38,7 @@ def login():
                   </div>
                 </body>
             ''', 400
+
     return '''
         <body style="background-color: #e0f7fa;">
           <div style="text-align:center; margin-top: 10vh;">
@@ -50,11 +53,13 @@ def login():
         </body>
     '''
 
+
 @app.route("/sign_up", methods=["GET", "POST"])
 def sign_up():
     if request.method == "POST":
         username = request.form.get("username", "")
-        password = request.form.get("password", "")
+        password = request.form.get("password", "").encode("utf-8")
+
         if username in subscribers:
             return '''
                 <body style="background-color: #ffebee;">
@@ -65,7 +70,7 @@ def sign_up():
                 </body>
             ''', 400
         elif username and password:
-            subscribers[username] = password
+            subscribers[username] = hashpw(password, gensalt())
             return redirect(url_for("welcome", username=username))
         else:
             return '''
@@ -76,6 +81,7 @@ def sign_up():
                   </div>
                 </body>
             ''', 400
+
     return '''
         <body style="background-color: #fff3e0;">
           <div style="text-align:center; margin-top: 10vh;">
@@ -90,6 +96,7 @@ def sign_up():
         </body>
     '''
 
+
 @app.route('/welcome/<username>', methods=['GET', 'POST'])
 def welcome(username):
     message = ""
@@ -97,27 +104,28 @@ def welcome(username):
     if request.method == 'POST':
         # Handle password change
         if 'new_password' in request.form:
-            current_password = request.form.get('password', '')
-            new_password = request.form['new_password']
-            confirm_password = request.form['confirm_password']
+            current_password = request.form.get("password", "").encode("utf-8")
+            new_password = request.form['new_password'].encode("utf-8")
+            confirm_password = request.form['confirm_password'].encode("utf-8")
 
-            if subscribers.get(username) != current_password:
-                message = "❌ Error: Current password is incorrect.",
+            if not checkpw(current_password, subscribers.get(username)):
+                message = "❌ Error: Current password is incorrect."
             elif new_password != confirm_password:
-                message = "❌ Error: Passwords do not match.",
+                message = "❌ Error: Passwords do not match."
             else:
-                subscribers[username] = new_password
-                message = "✅ Password updated successfully!", 
+                subscribers[username] = hashpw(new_password, gensalt())
+                message = "✅ Password updated successfully!"
 
-        # Handle unsubscribe confirmation
+        # Handle unsubscribe
         elif 'confirm_unsubscribe' in request.form:
-            entered_password = request.form.get('password', '')
+            entered_password = request.form.get('password', '').encode("utf-8")
 
-            if subscribers.get(username) != entered_password:
+            if not checkpw(entered_password, subscribers.get(username)):
                 message = "❌ Error: Incorrect password. Unsubscribe failed."
             else:
                 del subscribers[username]
                 return redirect(url_for('login'))
+
     global admin_message
     display_message = admin_message if admin_message else "No message from the admins yet."
 
@@ -197,28 +205,30 @@ def welcome(username):
         </body>
     """
 
+
 @app.route('/admin/<username>', methods=['GET', 'POST'])
 def admin_dashboard(username):
     message = ""
+
     if request.method == 'POST':
         if 'new_password' in request.form and 'new_username' in request.form:
-            current_password = request.form.get('password', '')
-            new_password = request.form['new_password']
-            confirm_password = request.form['confirm_password']
+            current_password = request.form.get("password", "").encode("utf-8")
+            new_password = request.form['new_password'].encode("utf-8")
+            confirm_password = request.form['confirm_password'].encode("utf-8")
             new_username = request.form['new_username']
 
-
-            if admins.get(username) != current_password:
+            if not checkpw(current_password, admins.get(username)):
                 message = "❌ Error: Current password is incorrect."
             elif new_password != confirm_password:
                 message = "❌ Error: Passwords do not match."
             elif new_username in admins:
                 message = "❌ Error: Username already exists."
             else:
-                admins[new_username] = new_password
+                admins[new_username] = hashpw(new_password, gensalt())
                 if new_username != username:
                     del admins[username]
                     message = "✅ Credentials updated successfully! Logout to re-login to complete changes."
+
     return f"""
     <body style="background-color:#f0f4f8; font-family:Arial,sans-serif; text-align:center; margin-top:5vh;">
       <h2>Welcome Admin {username}!</h2>
@@ -264,18 +274,17 @@ def admin_dashboard(username):
         <a href="/" style="color: #2e7d32; text-decoration:none;">Logout</a>
       </div>
 
-           <!-- Status Message -->
-            <p style="color: #2e7d32; margin-top: 20px;">{message}</p>
-          </div>
+      <p style="color: #2e7d32; margin-top: 20px;">{message}</p>
 
-          <script>
-            function ChangeCredentials() {{
-                const form = document.getElementById('ChangeCredentials');
-                form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            }}
-          </script>
-        </body>
+      <script>
+        function ChangeCredentials() {{
+            const form = document.getElementById('ChangeCredentials');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }}
+      </script>
+    </body>
     """
+
 
 @app.route('/admin/<username>/subscribers')
 def view_subscribers(username):
@@ -284,7 +293,7 @@ def view_subscribers(username):
         users_list += f"""
           <li style='margin:10px;'>
             👤 {user}
-            <a href='/admin/remove_user/{user}' style='margin-left:15px;'>
+            <a href='/admin/<username>/remove_user/{user}' style='margin-left:15px;'>
               <button style='padding:5px 10px; background-color:#e53935; color:white; border:none; border-radius:5px;'>
                 Remove
               </button>
@@ -307,8 +316,9 @@ def view_subscribers(username):
     </body>
     """
 
+
 @app.route('/admin/<admin_username>/remove_user/<username>')
-def remove_user(admin_username,username):
+def remove_user(admin_username, username):
     if username in subscribers:
         del subscribers[username]
         msg = f"✅ User '{username}' removed successfully."
@@ -325,6 +335,7 @@ def remove_user(admin_username,username):
       </a>
     </body>
     """
+
 
 @app.route('/admin/<username>/post_message', methods=['GET', 'POST'])
 def post_message(username):
@@ -361,4 +372,4 @@ def post_message(username):
 
 
 if __name__ == '__main__':
-  app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
